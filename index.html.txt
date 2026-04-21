@@ -142,7 +142,7 @@
     </div>
 
     <script>
-        const APP_URL = 'https://script.google.com/macros/s/AKfycbykESIJPdmJHVPDrh23uUdXHmk07dI425yqaypSzvf1dyEcadPtmuuqJyE84T4G8ty2xQ/exec'; // ← ZAMIEŃ NA SWÓJ URL Z APPS SCRIPT !!!
+        const APP_URL = 'https://script.google.com/macros/s/AKfycbykESIJPdmJHVPDrh23uUdXHmk07dI425yqaypSzvf1dyEcadPtmuuqJyE84T4G8ty2xQ/exec'; 
 
         let isInLoading = false;
         let startTime = null;
