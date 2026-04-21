@@ -62,8 +62,8 @@
     </div>
 
     <script>
-        const APP_URL = 'https://script.google.com/macros/s/AKfycbzH_MsmuJj40uZZIo_laFZVhFqZlINKAN8PmZqsghiC6oS39bLfj8oWb02gbx-D67WVFw/exec';
-        // ← ZMIEŃ na Twój najnowszy URL z Apps Script
+        const APP_URL = 'https://script.google.com/macros/s/AKfycbz0u_SrRD1Vyza41_QVV74OPkd0yB98o9bgFw8TNA30rteqCt0YMuyVyQvf6OyzyV_vHQ/exec';
+        // ← ZMIEŃ na Twój aktualny URL z Apps Script (kończy się na /exec)
 
         let startTime = null;
         let payload = null;
@@ -92,28 +92,24 @@
             };
 
             show('loading-container');
-            sendData();
+            // NIE wysyłamy co sekundę – tylko na końcu
         }
 
-        function sendData() {
+        function sendFinalData() {
             if (!payload || !startTime) return;
-            const timeSpent = Math.floor((Date.now() - startTime) / 1000);
-            payload.time_seconds = timeSpent;
+            
+            const finalTime = Math.floor((Date.now() - startTime) / 1000);
+            payload.time_seconds = finalTime;
 
             fetch(APP_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },   // ← TO JEST KLUCZOWA ZMIANA
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(payload),
                 keepalive: true
             })
-            .then(r => {
-                if (r.ok) console.log('✅ Zapisano w arkuszu!');
-                else console.error('❌ Błąd:', r.status);
-            })
-            .catch(err => console.error('❌ Błąd połączenia:', err));
+            .then(() => console.log('✅ Zapisano finalny wynik:', finalTime, 'sekund'))
+            .catch(() => {});
         }
-
-        setInterval(() => { if (payload && startTime) sendData(); }, 1000);
 
         window.onload = function() {
             if (localStorage.getItem('surveyCompleted') === 'true') {
@@ -123,9 +119,10 @@
             show('form-container');
         };
 
+        // ZAPIS TYLKO RAZ – przy zamknięciu/odświeżeniu karty
         window.addEventListener('beforeunload', () => {
             if (payload) {
-                sendData();
+                sendFinalData();
                 localStorage.setItem('surveyCompleted', 'true');
             }
         });
