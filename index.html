@@ -32,11 +32,10 @@
                 <div class="radio-group">
                     <label><input type="radio" name="gender" value="kobieta"> Kobieta</label>
                     <label><input type="radio" name="gender" value="mężczyzna"> Mężczyzna</label>
-                </div>
 
+                </div>
                 <label>Wiek (w latach):</label>
                 <input type="number" id="age" min="1" max="120" placeholder="Wpisz wiek">
-
                 <label>Wykształcenie:</label>
                 <select id="education">
                     <option value="">— wybierz —</option>
@@ -46,7 +45,6 @@
                     <option value="zawodowe">zawodowe</option>
                     <option value="wyższe">wyższe</option>
                 </select>
-
                 <button onclick="startLoading()">Przejdź dalej</button>
             </div>
         </div>
@@ -63,99 +61,71 @@
         </div>
     </div>
 
-<script>
-const APP_URL = 'https://script.google.com/macros/s/AKfycbz3gqVyqug9KEbMaVg8BXok3fmgCd7pPSKCp10dgI33wAjiEvzKcgSqOMnOdVEuQv-4vA/exec';
+    <script>
+        const APP_URL = 'https://script.google.com/macros/s/AKfycbz3gqVyqug9KEbMaVg8BXok3fmgCd7pPSKCp10dgI33wAjiEvzKcgSqOMnOdVEuQv-4vA/exec';
+        // ← ZMIEŃ na Twój aktualny URL z Apps Script (kończy się na /exec)
 
-let startTime = null;
-let payload = null;
-let alreadySent = false;
+        let startTime = null;
+        let payload = null;
 
-// 🔁 przełączanie widoków
-function show(id) {
-    document.querySelectorAll('.container > div').forEach(div => div.style.display = 'none');
-    document.getElementById(id).style.display = (id === 'loading-container') ? 'flex' : 'block';
-}
+        function show(id) {
+            document.querySelectorAll('.container > div').forEach(div => div.style.display = 'none');
+            document.getElementById(id).style.display = (id === 'loading-container') ? 'flex' : 'block';
+        }
 
-// ▶️ start badania
-function startLoading() {
-    const gender = document.querySelector('input[name="gender"]:checked');
-    const age = document.getElementById('age').value;
-    const education = document.getElementById('education').value;
+        function startLoading() {
+            const gender = document.querySelector('input[name="gender"]:checked');
+            const age = document.getElementById('age').value;
+            const education = document.getElementById('education').value;
 
-    if (!gender) { alert('Wybierz płeć'); return; }
-    if (!age || age < 1) { alert('Podaj poprawny wiek'); return; }
-    if (!education) { alert('Wybierz wykształcenie'); return; }
+            if (!gender) { alert('Wybierz płeć'); return; }
+            if (!age || age < 1) { alert('Podaj poprawny wiek'); return; }
+            if (!education) { alert('Wybierz wykształcenie'); return; }
 
-    startTime = Date.now();
-    alreadySent = false;
+            startTime = Date.now();
+            payload = {
+                gender: gender.value,
+                age: parseInt(age),
+                education: education,
+                time_seconds: 0,
+                timestamp: new Date().toISOString()
+            };
 
-    payload = {
-        gender: gender.value,
-        age: parseInt(age),
-        education: education,
-        time_seconds: 0,
-        timestamp: new Date().toISOString()
-    };
+            show('loading-container');
+            // NIE wysyłamy co sekundę – tylko na końcu
+        }
 
-    show('loading-container');
-}
+        function sendFinalData() {
+            if (!payload || !startTime) return;
+            
+            const finalTime = Math.floor((Date.now() - startTime) / 1000);
+            payload.time_seconds = finalTime;
 
-// 📡 wysyłanie danych (BEACON)
-function sendFinalData() {
-    if (!payload || !startTime || alreadySent) return;
+            fetch(APP_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload),
+                keepalive: true
+            })
+            .then(() => console.log('✅ Zapisano finalny wynik:', finalTime, 'sekund'))
+            .catch(() => {});
+        }
 
-    const finalTime = Math.floor((Date.now() - startTime) / 1000);
-    payload.time_seconds = finalTime;
+        window.onload = function() {
+            if (localStorage.getItem('surveyCompleted') === 'true') {
+                show('thank-container');
+                return;
+            }
+            show('form-container');
+        };
 
-    const data = JSON.stringify(payload);
-
-    navigator.sendBeacon(APP_URL, data);
-
-    alreadySent = true;
-    localStorage.setItem('surveyCompleted', 'true');
-
-    console.log('✅ Wysłano:', finalTime, 'sekund');
-}
-
-// 🔄 autosave co 5 sekund
-setInterval(() => {
-    if (payload && startTime && !alreadySent) {
-        sendFinalData();
-    }
-}, 5000);
-
-// 🔚 wyjście ze strony (NAJWAŻNIEJSZE)
-window.addEventListener('pagehide', () => {
-    sendFinalData();
-});
-
-// 🔚 wyjście ze strony (zamknięcie / reload)
-window.addEventListener('pagehide', () => {
-    sendFinalData();
-});
-
-// 👁️ zmiana widoczności (bardziej „badawcze”)
-let visibilityTimer = null;
-
-window.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') {
-        visibilityTimer = setTimeout(() => {
-            sendFinalData();
-            show('thank-container');
-        }, 2000); // opóźnienie 2 sekundy
-    } else {
-        clearTimeout(visibilityTimer);
-    }
-});
-
-// 🚀 start
-window.onload = function() {
-    if (localStorage.getItem('surveyCompleted') === 'true') {
-        show('thank-container');
-    } else {
-        show('form-container');
-    }
-};
-</script>
+        // ZAPIS TYLKO RAZ – przy zamknięciu/odświeżeniu karty
+        window.addEventListener('beforeunload', () => {
+            if (payload) {
+                sendFinalData();
+                localStorage.setItem('surveyCompleted', 'true');
+            }
+        });
+    </script>
 </body>
 </html>
