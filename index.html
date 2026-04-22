@@ -32,7 +32,6 @@
                 <div class="radio-group">
                     <label><input type="radio" name="gender" value="kobieta"> Kobieta</label>
                     <label><input type="radio" name="gender" value="mężczyzna"> Mężczyzna</label>
-
                 </div>
                 <label>Wiek (w latach):</label>
                 <input type="number" id="age" min="1" max="120" placeholder="Wpisz wiek">
@@ -62,15 +61,21 @@
     </div>
 
     <script>
+        // 1. TUTAJ WKLEJ SWÓJ URL Z GOOGLE APPS SCRIPT
         const APP_URL = 'https://script.google.com/macros/s/AKfycbz3gqVyqug9KEbMaVg8BXok3fmgCd7pPSKCp10dgI33wAjiEvzKcgSqOMnOdVEuQv-4vA/exec';
-        // ← ZMIEŃ na Twój aktualny URL z Apps Script (kończy się na /exec)
 
         let startTime = null;
         let payload = null;
+        let dataSent = false; // Flaga zapobiegająca dublowaniu rekordów
 
         function show(id) {
             document.querySelectorAll('.container > div').forEach(div => div.style.display = 'none');
-            document.getElementById(id).style.display = (id === 'loading-container') ? 'flex' : 'block';
+            const target = document.getElementById(id);
+            if (id === 'loading-container') {
+                target.style.display = 'flex';
+            } else {
+                target.style.display = 'block';
+            }
         }
 
         function startLoading() {
@@ -92,24 +97,34 @@
             };
 
             show('loading-container');
-            // NIE wysyłamy co sekundę – tylko na końcu
         }
 
         function sendFinalData() {
-            if (!payload || !startTime) return;
-            
+            // Wyślij tylko jeśli test trwa i dane nie zostały jeszcze wysłane
+            if (!payload || !startTime || dataSent) return;
+
             const finalTime = Math.floor((Date.now() - startTime) / 1000);
             payload.time_seconds = finalTime;
 
-            fetch(APP_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify(payload),
-                keepalive: true
-            })
-            .then(() => console.log('✅ Zapisano finalny wynik:', finalTime, 'sekund'))
-            .catch(() => {});
+            // Używamy Blob i navigator.sendBeacon dla maksymalnej niezawodności przy zamykaniu karty
+            const blob = new Blob([JSON.stringify(payload)], { type: 'text/plain;charset=utf-8' });
+            const success = navigator.sendBeacon(APP_URL, blob);
+
+            if (success) {
+                dataSent = true;
+                localStorage.setItem('surveyCompleted', 'true');
+            }
         }
+
+        // Obsługa wyjścia ze strony (zamknięcie karty, zmiana aplikacji, minimalizacja)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                sendFinalData();
+            }
+        });
+
+        // Dodatkowe zabezpieczenie dla starszych przeglądarek lub specyficznych zachowań mobilnych
+        window.addEventListener('pagehide', sendFinalData);
 
         window.onload = function() {
             if (localStorage.getItem('surveyCompleted') === 'true') {
@@ -118,14 +133,6 @@
             }
             show('form-container');
         };
-
-        // ZAPIS TYLKO RAZ – przy zamknięciu/odświeżeniu karty
-        window.addEventListener('beforeunload', () => {
-            if (payload) {
-                sendFinalData();
-                localStorage.setItem('surveyCompleted', 'true');
-            }
-        });
     </script>
 </body>
 </html>
