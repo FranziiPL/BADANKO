@@ -29,9 +29,10 @@
             <div class="header">Podstawowe dane</div>
             <div class="content">
                 
-                <label>Twój kod uczestnika (pierwsze dwie litery imienia (dużymi) + rok urodzenia):</label>
+                <!-- NOWE POLE Z KODEM -->
+                <label>Twój kod uczestnika (pierwsze dwie litery imienia + rok urodzenia):</label>
                 <input type="text" id="userCode" maxlength="6" placeholder="np. JA1995" style="text-transform: uppercase;">
-                <small style="color:#666; display:block; margin-top:5px;">Przykład: Jan Kowalski ur. 1995 → JA1995</small>
+                <small style="color:#666; display:block; margin-top:5px;">Przykład: Jan Kowalski ur. 1995 → <strong>JA1995</strong></small>
 
                 <label>Płeć:</label>
                 <div class="radio-group">
@@ -85,8 +86,8 @@
             const age = document.getElementById('age').value;
             const education = document.getElementById('education').value;
 
-            if (!userCode || userCode.length < 2) { 
-                alert('Wpisz swój kod uczestnika (np. KA1995)'); 
+            if (!userCode || userCode.length !== 6) { 
+                alert('Wpisz poprawny kod uczestnika (np. KA1995)'); 
                 return; 
             }
             if (!gender) { alert('Wybierz płeć'); return; }
@@ -118,12 +119,8 @@
                 body: JSON.stringify(payload),
                 keepalive: true
             })
-            .then(() => {
-                localStorage.setItem('surveyCompleted', 'true');
-            })
-            .catch(() => {
-                localStorage.setItem('surveyCompleted', 'true');
-            });
+            .then(() => localStorage.setItem('surveyCompleted', 'true'))
+            .catch(() => localStorage.setItem('surveyCompleted', 'true'));
         }
 
         window.onload = function() {
