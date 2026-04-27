@@ -28,7 +28,6 @@
         <div id="form-container">
             <div class="header">Podstawowe dane</div>
             <div class="content">
-                
                 <label>Twój kod uczestnika (pierwsze dwie litery imienia + rok urodzenia):</label>
                 <input type="text" id="userCode" maxlength="6" placeholder="np. JA1995" style="text-transform: uppercase;">
                 <small style="color:#666; display:block; margin-top:5px;">Przykład: Jan Kowalski ur. 1995 → <strong>JA1995</strong></small>
@@ -73,7 +72,7 @@
 
         let startTime = null;
         let payload = null;
-        let dataSent = false;           // ← KLUCZOWA flaga
+        let dataSent = false;
 
         function show(id) {
             document.querySelectorAll('.container > div').forEach(div => div.style.display = 'none');
@@ -108,7 +107,9 @@
         }
 
         function sendFinalData() {
-            if (!payload || !startTime || dataSent) return;   // ← blokada wielokrotnego wysyłania
+            if (!payload || !startTime || dataSent) return;
+
+            dataSent = true;   // blokada od razu
 
             const finalTime = Math.floor((Date.now() - startTime) / 1000);
             payload.time_seconds = finalTime;
@@ -119,14 +120,8 @@
                 body: JSON.stringify(payload),
                 keepalive: true
             })
-            .then(() => {
-                dataSent = true;
-                localStorage.setItem('surveyCompleted', 'true');
-            })
-            .catch(() => {
-                dataSent = true;
-                localStorage.setItem('surveyCompleted', 'true');
-            });
+            .then(() => localStorage.setItem('surveyCompleted', 'true'))
+            .catch(() => localStorage.setItem('surveyCompleted', 'true'));
         }
 
         window.onload = function() {
@@ -137,12 +132,19 @@
             show('form-container');
         };
 
-        // Zdarzenia wysyłające dane – tylko raz
+        // Najważniejsze zdarzenia
         window.addEventListener('beforeunload', sendFinalData);
+
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden') sendFinalData();
+            if (document.visibilityState === 'hidden' && !dataSent) {
+                sendFinalData();
+            }
         });
-        window.addEventListener('pagehide', sendFinalData);
+
+        // Dodatkowe dla mobile i niektórych przeglądarek
+        window.addEventListener('pagehide', () => {
+            if (!dataSent) sendFinalData();
+        });
     </script>
 </body>
 </html>
