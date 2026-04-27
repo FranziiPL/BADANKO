@@ -11,7 +11,7 @@
         .header {background:#3498db; color:white; padding:20px; text-align:center; font-size:1.4em;}
         .content {padding:40px 30px; text-align:center;}
         label {display:block; margin:20px 0 8px; font-weight:500; text-align:left;}
-        select, input {width:100%; padding:12px; border:2px solid #ddd; border-radius:8px; font-size:1.1em;}
+        select, input {width:100%; padding:12px; border:2px solid #ddd; border-radius:8px; font-size:1.1em; box-sizing: border-box;}
         .radio-group {display:flex; gap:20px; justify-content:center; margin:15px 0;}
         button {margin-top:30px; padding:15px 40px; font-size:1.2em; background:#27ae60; color:white; border:none; border-radius:8px; cursor:pointer;}
         button:hover {background:#219653;}
@@ -20,7 +20,7 @@
         .spinner {border:8px solid #f3f3f3; border-top:8px solid #3498db; border-radius:50%; width:70px; height:70px; animation:spin 1s linear infinite; margin-bottom:25px;}
         @keyframes spin {0%{transform:rotate(0deg);} 100%{transform:rotate(360deg);}}
         
-        .thank {display:none; padding:60px 40px; font-size:1.3em; line-height:1.5;}
+        .thank {display:none; padding:60px 40px; font-size:1.3em; line-height:1.5; text-align: center;}
     </style>
 </head>
 <body>
@@ -28,10 +28,8 @@
         <div id="form-container">
             <div class="header">Podstawowe dane</div>
             <div class="content">
-                
-                <label>Twój kod uczestnika (pierwsze dwie litery imienia + rok urodzenia):</label>
-                <input type="text" id="userCode" maxlength="6" placeholder="np. JA1995" style="text-transform: uppercase;">
-                <small style="color:#666; display:block; margin-top:5px;">Przykład: Jan Kowalski ur. 1995 → <strong>JA1995</strong></small>
+                <label> Kod użytkownia (2 pierwsze litery imienia + rok urodzenia):</label>
+                <input type="text" id="user_code" placeholder="np. MA1995" maxlength="10">
 
                 <label>Płeć:</label>
                 <div class="radio-group">
@@ -73,30 +71,33 @@
 
         let startTime = null;
         let payload = null;
-        let dataSent = false;           // ← KLUCZOWA flaga
+        let dataSent = false;
 
         function show(id) {
             document.querySelectorAll('.container > div').forEach(div => div.style.display = 'none');
-            document.getElementById(id).style.display = (id === 'loading-container') ? 'flex' : 'block';
+            const target = document.getElementById(id);
+            if (id === 'loading-container') {
+                target.style.display = 'flex';
+            } else {
+                target.style.display = 'block';
+            }
         }
 
         function startLoading() {
-            const userCode = document.getElementById('userCode').value.trim().toUpperCase();
+            const userCode = document.getElementById('user_code').value.trim();
             const gender = document.querySelector('input[name="gender"]:checked');
             const age = document.getElementById('age').value;
             const education = document.getElementById('education').value;
 
-            if (!userCode || userCode.length !== 6) { 
-                alert('Wpisz poprawny kod uczestnika (np. KA1995)'); 
-                return; 
-            }
+            // Walidacja
+            if (!userCode) { alert('Wpisz swój unikalny kod'); return; }
             if (!gender) { alert('Wybierz płeć'); return; }
             if (!age || age < 1) { alert('Podaj poprawny wiek'); return; }
             if (!education) { alert('Wybierz wykształcenie'); return; }
 
             startTime = Date.now();
             payload = {
-                userCode: userCode,
+                user_code: userCode, // Dodane do danych wysyłanych
                 gender: gender.value,
                 age: parseInt(age),
                 education: education,
@@ -108,26 +109,27 @@
         }
 
         function sendFinalData() {
-            if (!payload || !startTime || dataSent) return;   // ← blokada wielokrotnego wysyłania
+            if (!payload || !startTime || dataSent) return;
 
             const finalTime = Math.floor((Date.now() - startTime) / 1000);
             payload.time_seconds = finalTime;
 
-            fetch(APP_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify(payload),
-                keepalive: true
-            })
-            .then(() => {
+            const blob = new Blob([JSON.stringify(payload)], { type: 'text/plain;charset=utf-8' });
+            const success = navigator.sendBeacon(APP_URL, blob);
+
+            if (success) {
                 dataSent = true;
                 localStorage.setItem('surveyCompleted', 'true');
-            })
-            .catch(() => {
-                dataSent = true;
-                localStorage.setItem('surveyCompleted', 'true');
-            });
+            }
         }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                sendFinalData();
+            }
+        });
+
+        window.addEventListener('pagehide', sendFinalData);
 
         window.onload = function() {
             if (localStorage.getItem('surveyCompleted') === 'true') {
@@ -136,13 +138,6 @@
             }
             show('form-container');
         };
-
-        // Zdarzenia wysyłające dane – tylko raz
-        window.addEventListener('beforeunload', sendFinalData);
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden') sendFinalData();
-        });
-        window.addEventListener('pagehide', sendFinalData);
     </script>
 </body>
 </html>
